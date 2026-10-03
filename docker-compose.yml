@@ -1,0 +1,104 @@
+services:
+  # -------------------------------------------------------------------------- DEV 
+  dev:
+    build:
+      context: .
+      dockerfile: ./docker/api/Dockerfile.dev
+    container_name: ${PROJECT_NAME}-api-dev
+    image: konsin1988/${PROJECT_NAME}-api-dev:${PROJECT_VERSION}
+    env_file: .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./api:/app
+      - /api/tmp
+    environment:
+      - GO_ENABLED=0
+      - GO111MODULE=on
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000${PROXY_PATH}/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    mem_limit: 1G
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10M"
+        max-file: "3"
+    command: air /api
+    networks:
+      - margi 
+
+  # ------------------------------------------------------------ PROD 
+  prod:
+    build:
+      context: .
+      dockerfile: ./dokcer/api/Dockerfile
+    image: konsin1988/${PROJECT_NAME}-api:${PROJECT_VERSION}
+    container_name: ${PROJECT_NAME}-api
+    env_file: .env
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000${PROXY_PATH}/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    mem_limit: 1G
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10M"
+        max-file: "3"
+    networks:
+      - margi 
+
+  # -------------------------------------------------------------------------- CLIENT
+  client:
+    build:
+      context: .
+      dockerfile: ./docker/app/Dockerfile
+    container_name: ${PROJECT_NAME}-app
+    image: konsin1988/${PROJECT_NAME}-app:${PROJECT_VERSION}
+    ports:
+      - "3000:80"
+    depends_on:
+      dev:
+        condition: service_healthy
+    restart: unless-stopped 
+    mem_limit: 1G
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 256M 
+    logging:
+      driver: json-file
+      options:
+        max-size: "10M"
+        max-file: "3" 
+    networks:
+        - margi 
+  
+networks:
+  margi:
+    name: margi 
+    external: True
